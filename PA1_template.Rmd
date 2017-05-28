@@ -1,0 +1,281 @@
+---
+title: "Proj for Week2 of Reproducible Research"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+This is an R Markdown document. The aim of the document is to answer all the questions set in Week 2 of the Data Science module called Reproducible Research.
+
+```{r message = FALSE}
+install.packages("plyr", repos = "http://cran.us.r-project.org")
+library("plyr")
+install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+library("ggplot2")
+install.packages("dplyr", repos = "http://cran.us.r-project.org")
+library("dplyr")
+```
+
+
+**Question**
+Loading and preprocessing the data
+
+Show any code that is needed to
+
+Load the data (i.e. read.csv())
+
+Process/transform the data (if necessary) into a format suitable for your analysis
+
+**To do this :**
+-read in the csv data
+
+-tidy the data so every row has a value in each column
+
+```{r read, echo=TRUE}
+
+getwd()
+setwd("C:/Users/zehra/Documents/Coursera")
+temp <- tempfile()
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip",temp)
+unzip(temp, "activity.csv")
+activity<- read.csv("activity.csv",header=TRUE, sep = ",",fill = TRUE,quote="\"",strip.white = TRUE, stringsAsFactors = FALSE)
+summary(activity)
+activity_df <- na.omit(activity)
+summary(activity_df)
+str(activity_df)
+```
+**Question**
+What is mean total number of steps taken per day?
+
+-For this part of the assignment, you can ignore the missing values in the dataset.
+
+-Calculate the total number of steps taken per day
+If you do not understand the difference between a histogram and a barplot, research the difference between them.
+
+Make a histogram of the total number of steps taken each day
+
+**To do this :**
+1.Already ommitted the NAs to get data frame (activity_df)
+
+2.Sum up the setps per day (StepsSum)
+
+3.Histogram to show the total number of steps taken each day using ggplot2 function
+
+4.The bar chart/plot is used for categorical data and the bars can be ordered 
+BUT a histogram shows continuous data and the distribution of variables.
+
+
+```{r mean, echo=TRUE}
+##make historgram
+StepsSum<- aggregate(activity_df$steps, by=list(activity_df$date), FUN=sum)
+ggplot(data=StepsSum, aes(StepsSum$x)) + geom_histogram(stat = "bin", binwidth=150)+
+  xlab("Steps") + ylab("Frequency") +
+  labs(title="Histogram of the total number of steps taken each day")
+```
+
+**Question**
+-Calculate and report the mean and median of the total number of steps taken per day
+
+**To do this I will :**
+1.Calculate the mean and median steps per day through use of 
+aggregate function to work out the MEAN steps per day (StepsPerDate)
+
+```{r mean2, echo=TRUE}
+
+library("plyr")
+step_count <- count(activity_df, vars = c("steps"))
+StepsPerDate<- aggregate(activity_df$steps ~ activity_df$date, activity_df, FUN=mean)
+head(StepsPerDate, n=10)
+MedianSteps<- aggregate(activity_df$steps ~ activity_df$date, activity_df, FUN=median)
+head(MedianSteps, n=10)
+```
+**Question**
+What is the average daily activity pattern?
+
+Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+**To do this:**
+1.Convert the factor date col to the date class -- optional
+
+2.Change the interval integer variable to a time variable
+
+```{r plots, echo=TRUE}
+
+library("plyr")
+StepsPerInterv<- aggregate(activity_df$steps ~ activity_df$interval, activity_df, FUN=mean)
+StepsPerInterv
+
+##tidy col names in data frame we need for this part
+names(StepsPerInterv)[names(StepsPerInterv) == 'activity_df$interval'] <- 'perInterval'
+names(StepsPerInterv)[names(StepsPerInterv) == 'activity_df$steps'] <- 'avSteps'
+##make the axes timeseries
+StepsPerInterv$perInterval<- ts(StepsPerInterv$perInterval)
+StepsPerInterv$avSteps<- ts(StepsPerInterv$avSteps)
+##use the time series plot function
+plot.ts(StepsPerInterv$perInterval, StepsPerInterv$avSteps, 
+     type = "l", 
+     col = "green", 
+     lwd = 3,
+     xlab = "5 min interval",
+     ylab = "average ",
+     main = "Av No of Steps across all days -- 835 interval has most steps")
+
+library("ggplot2")
+ggplot(StepsPerInterv, aes(perInterval, avSteps)) + geom_line() +
+  xlab("interval") + ylab("steps")
+```
+
+**835 is the interval with the highest number of steps.**
+
+
+**Question**Imputing missing values
+Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.
+
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+**To do this:**
+1.Check the activity data frame see where the NAs are , they are all in steps column
+Use the sum function to get the no of NAs (NA_number)The total number of rows with NAs is 2304.
+
+2.Get the rows with NAs to create a new df (NA_df)
+
+3.Insert the mean steps to that NA_df to overwrite NAs
+
+```{r imputing missing values, echo=TRUE}
+
+##tidy col names in data frame we need for this part
+names(StepsPerDate)[names(StepsPerDate) == 'activity_df$date'] <- 'perDate'
+names(StepsPerDate)[names(StepsPerDate) == 'activity_df$steps'] <- 'avSteps'
+##tidy col names in data frame we need for this part
+names(StepsPerInterv)[names(StepsPerInterv) == 'activity_df$interval'] <- 'perInterval'
+names(StepsPerInterv)[names(StepsPerInterv) == 'activity_df$steps'] <- 'avSteps'
+
+
+##subset to find which rows have the NAs
+NA_number <-sum(is.na(activity$steps))
+NA_df <-activity[!complete.cases(activity), ]
+
+names(NA_df)[names(NA_df)=="steps"] <- "avSteps"
+names(NA_df)[names(NA_df)=="date"] <- "perDate"
+
+##list/get the dates & can see these dates are not in StepsPerDate so use mean steps from interval df
+date_in_df <- unique(NA_df$perDate)
+NA_df$perDate <- as.Date(NA_df$perDate)
+
+##Strategy for NAs --extract avSteps from StepsPerInterv& insert to NA_df-- NOTE this is a subset of activity df hence replacing all values
+NA_df$avSteps <- StepsPerInterv[StepsPerInterv$perInterval %in% NA_df$interval,"avSteps"]
+
+```
+**Question**
+Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+Make a histogram of the total number of steps taken each day and
+
+Calculate and report the mean and median total number of steps taken per day.
+
+Do these values differ from the estimates from the first part of the assignment? 
+
+What is the impact of imputing missing data on the estimates of the total daily number of steps? (step_total)
+
+**To do this**
+4.Replace NAs on activity to make new dataset called activity_complete - using replace function
+
+5.Make the histogram (title="Histogram of the total number of steps taken each day NAs replaced")
+
+6.Re-use the mean and median calcs
+```{r imputing missing values on original dataset, echo=TRUE}
+
+summary(activity)
+str(activity)
+
+activity_complete<- activity
+
+##rename the NA_Df cols to match the df we will fill in
+colnames(NA_df) <- c("steps", "date","interval")
+
+activity_complete$date <- as.Date(activity_complete$date)
+
+##merge activity_complete and NA_df
+##full_activity <- merge(activity_complete, NA_df, by=	c("date","interval"), all=TRUE,suffixes=c(".activity_complete", ".NA_df"))
+
+##impute only missing values-- use the NA_df subset to get interval averages
+activity_complete$steps[is.na(activity_complete$steps)] <- NA_df$steps
+
+#remove empty cols
+str(activity_complete)
+
+##make histogram
+StepsSum<- aggregate(activity_complete$steps, by=list(activity_complete$date), FUN=sum)
+ggplot(data=StepsSum, aes(StepsSum$x)) + geom_histogram(stat = "bin", binwidth=150)+
+  xlab("Steps") + ylab("Frequency") +
+  labs(title="Histogram of the total number of steps taken each day NAs replaced")
+
+##mean and median
+StepsPerDate2<- aggregate(activity_complete$steps ~ activity_complete$date, activity_complete, FUN=mean)
+head(StepsPerDate2, n=10)
+MedianSteps2<- aggregate(activity_complete$steps ~ activity_complete$date, activity_complete, FUN=median)
+head(MedianSteps2, n=10)
+
+##total daily number of steps
+step_total <- count(activity_complete, vars = c("steps"))
+
+```
+
+**Comparison to data without NAs**
+
+After using the mean step count per interval to impute missing values, we can see the total number of steps per day increases by 2394.
+
+The histogram with NAs replaced shows that there is a distinct most frequent step count, this is not clear from the historgram omitting NAs.
+
+The mean and median compared to the earlier mean and median of data set without NAs imputted: Median is no longer zero. 
+
+Looking at both the data frames with imputted values and none: The same date has the highest average number of steps.
+The same date has the lowest average number of steps. There are more averages (61) in the data set with imputted NAs.
+
+**Question**
+
+Are there differences in activity patterns between weekdays and weekends?
+
+For this part the weekdays() function may be of some help here. Use the dataset with the filled-in missing values for this part.
+
+Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+
+```{r weekdays versus weekends, echo=TRUE}
+str(activity_complete)
+activity_complete$date <- as.Date(activity_complete$date)
+weekdays <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+#Use `%in%` and `weekdays` to create a logical vector
+#convert to `factor` and specify the `levels/labels`
+activity_complete$week_ind <- factor((weekdays(activity_complete$date) %in% weekdays),levels=c(FALSE, TRUE), labels=c('weekend', 'weekday'))
+
+activity_complete$interval<- ts(activity_complete$interval)
+activity_complete$steps<- ts(activity_complete$steps)
+
+##use the time series plot function copying the format in: https://github.com/rdpeng/RepData_PeerAssessment1
+library("lattice")
+
+panel.smoother <- function(x, y) {
+  ##panel.xyplot(x, y) # show points 
+  panel.loess(x, y)  # show smoothed line 
+  }
+
+xyplot(activity_complete$interval ~ activity_complete$steps | activity_complete$week_ind, data = activity_complete,
+  xlab = "Interval",
+  ylab = "Number of steps",
+  panel=panel.smoother,
+  main = "Av No of Steps per Interval (NAs filled) Plot",
+  layout=c(1,2)
+ )
+
+
+
+```
+
+
