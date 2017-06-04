@@ -1,10 +1,14 @@
 ---
 title: "Proj for Week2 of Reproducible Research"
-output: html_document
+output: 
+  html_document: 
+    keep_md: yes
+keep_md: true
+self_contained: true
 ---
 
 
-```{r setup, include=FALSE}
+```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 This is an R Markdown document. The aim of the document is to answer all the questions set in Week 2 of the Data Science module called Reproducible Research.
@@ -277,5 +281,15 @@ xyplot(activity_complete$interval ~ activity_complete$steps | activity_complete$
 
 
 ```
+
+This code was used to create the html document.
+setwd("C:/Users/zehra/Documents/Coursera")
+
+library(knitr)
+library(markdown)
+library(render)
+
+#rmarkdown::render()
+rmarkdown::render("PA1_template.Rmd",output_format = "html_document",output_dir = "C:/Users/zehra/Documents/Coursera")
 
 
